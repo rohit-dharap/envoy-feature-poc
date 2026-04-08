@@ -4,11 +4,15 @@ services:
 
   envoy:
     image: envoyproxy/envoy:v1.29-latest
+    # below 2 lines needed only for podman
+    user: root
+    privileged: true
     ports:
       - "10000:10000"   # this is where you'll send your curl requests
       - "9901:9901"     # envoy admin dashboard
     volumes:
       - ./envoy.yaml:/etc/envoy/envoy.yaml
+      - ./lua:/etc/envoy/lua
     networks:
       - poc-network
 

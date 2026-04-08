@@ -13,6 +13,11 @@ static_resources:
                 "@type": type.googleapis.com/envoy.extensions.filters.network.http_connection_manager.v3.HttpConnectionManager
                 stat_prefix: ingress_http
                 http_filters:
+                  - name: envoy.filters.http.lua
+                    typed_config:
+                      "@type": type.googleapis.com/envoy.extensions.filters.http.lua.v3.Lua
+                      inline_code: |
+                        dofile("/etc/envoy/lua/routing_filter.lua")
                   - name: envoy.filters.http.router
                     typed_config:
                       "@type": type.googleapis.com/envoy.extensions.filters.http.router.v3.Router
@@ -20,12 +25,12 @@ static_resources:
                   name: local_route
                   virtual_hosts:
                     - name: backend
-                      domains: ["*"]
+                      domains: [ "*" ]
                       routes:
                         - match:
                             prefix: "/"
                           route:
-                            cluster: preprod_cluster
+                            cluster_header: "x-feature-target-cluster"
 
   clusters:
     - name: preprod_cluster
@@ -53,6 +58,37 @@ static_resources:
                     socket_address:
                       address: feature-env-service
                       port_value: 8080
+
+    - name: pp_cluster
+      connect_timeout: 5s
+      type: STRICT_DNS
+      transport_socket:
+        name: envoy.transport_sockets.tls
+        typed_config:
+          "@type": type.googleapis.com/envoy.extensions.transport_sockets.tls.v3.UpstreamTlsContext
+          sni: origin-sports-test-data-service.preprod.hotstar-labs.com
+      load_assignment:
+        cluster_name: pp_cluster
+        endpoints:
+          - lb_endpoints:
+              - endpoint:
+                  address:
+                    socket_address:
+                      address: origin-sports-test-data-service.preprod.hotstar-labs.com
+                      port_value: 443
+
+    - name: pp_cluster_internal
+      connect_timeout: 5s
+      type: STRICT_DNS
+      load_assignment:
+        cluster_name: pp_cluster_internal
+        endpoints:
+          - lb_endpoints:
+              - endpoint:
+                  address:
+                    socket_address:
+                      address: sports-test-data-service.internal.preprod.hotstar.com
+                      port_value: 80
 
 admin:
   address:
