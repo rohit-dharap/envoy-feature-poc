@@ -1,0 +1,39 @@
+version: "3.8"
+
+services:
+
+  envoy:
+    image: envoyproxy/envoy:v1.29-latest
+    ports:
+      - "10000:10000"   # this is where you'll send your curl requests
+      - "9901:9901"     # envoy admin dashboard
+    volumes:
+      - ./envoy.yaml:/etc/envoy/envoy.yaml
+    networks:
+      - poc-network
+
+  preprod-service:
+    image: python:3.11-slim
+    volumes:
+      - ./mock-services:/app
+    working_dir: /app
+    command: python preprod.py
+    networks:
+      poc-network:
+        aliases:
+          - preprod-service   # envoy will reach this service by this name
+
+  feature-env-service:
+    image: python:3.11-slim
+    volumes:
+      - ./mock-services:/app
+    working_dir: /app
+    command: python featureenv.py
+    networks:
+      poc-network:
+        aliases:
+          - feature-env-service  # envoy will reach this service by this name
+
+networks:
+  poc-network:
+    driver: bridge
