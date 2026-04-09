@@ -97,6 +97,32 @@ static_resources:
               trusted_ca:
                 filename: /etc/ssl/certs/ca-certificates.crt
 
+    - name: service1_cluster
+      connect_timeout: 5s
+      type: STRICT_DNS
+      load_assignment:
+        cluster_name: service1_cluster
+        endpoints:
+          - lb_endpoints:
+              - endpoint:
+                  address:
+                    socket_address:
+                      address: service1-preprod
+                      port_value: 8080
+
+    - name: service2_preprod_cluster
+      connect_timeout: 5s
+      type: STRICT_DNS
+      load_assignment:
+        cluster_name: service2_preprod_cluster
+        endpoints:
+          - lb_endpoints:
+              - endpoint:
+                  address:
+                    socket_address:
+                      address: service2-preprod
+                      port_value: 8080
+
 admin:
   address:
     socket_address:

@@ -3,7 +3,7 @@ version: "3.8"
 services:
 
   envoy:
-    image: envoyproxy/envoy:v1.29-latest
+    image: envoyproxy/envoy:v1.36.2
     # below 2 lines needed only for podman
     user: root
     privileged: true
@@ -37,6 +37,32 @@ services:
       poc-network:
         aliases:
           - feature-env-service  # envoy will reach this service by this name
+
+  service1:
+    image: python:3.11-slim
+    volumes:
+      - ./mock-services:/app
+    working_dir: /app
+    command: python service1.py
+    ports:
+      - "10001:8080"
+    networks:
+      poc-network:
+        aliases:
+          - service1-preprod
+
+  service2-preprod:
+    image: python:3.11-slim
+    volumes:
+      - ./mock-services:/app
+    working_dir: /app
+    command: python service2_preprod.py
+    ports:
+      - "10002:8080"
+    networks:
+      poc-network:
+        aliases:
+          - service2-preprod
 
 networks:
   poc-network:
