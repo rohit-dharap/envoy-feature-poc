@@ -18,6 +18,12 @@ static_resources:
                       "@type": type.googleapis.com/envoy.extensions.filters.http.lua.v3.Lua
                       inline_code: |
                         dofile("/etc/envoy/lua/routing_filter.lua")
+                  - name: envoy.filters.http.dynamic_forward_proxy
+                    typed_config:
+                      "@type": type.googleapis.com/envoy.extensions.filters.http.dynamic_forward_proxy.v3.FilterConfig
+                      dns_cache_config:
+                        name: dynamic_forward_proxy_cache_config
+                        dns_lookup_family: V4_ONLY
                   - name: envoy.filters.http.router
                     typed_config:
                       "@type": type.googleapis.com/envoy.extensions.filters.http.router.v3.Router
@@ -25,7 +31,7 @@ static_resources:
                   name: local_route
                   virtual_hosts:
                     - name: backend
-                      domains: [ "*" ]
+                      domains: ["*"]
                       routes:
                         - match:
                             prefix: "/"
@@ -59,36 +65,37 @@ static_resources:
                       address: feature-env-service
                       port_value: 8080
 
-    - name: pp_cluster
+    # DFP cluster for HTTP targets (internal services on port 80)
+    - name: dynamic_forward_proxy_cluster_http
       connect_timeout: 5s
-      type: STRICT_DNS
+      lb_policy: CLUSTER_PROVIDED
+      cluster_type:
+        name: envoy.clusters.dynamic_forward_proxy
+        typed_config:
+          "@type": type.googleapis.com/envoy.extensions.clusters.dynamic_forward_proxy.v3.ClusterConfig
+          dns_cache_config:
+            name: dynamic_forward_proxy_cache_config
+            dns_lookup_family: V4_ONLY
+
+    # DFP cluster for HTTPS targets (external services on port 443)
+    - name: dynamic_forward_proxy_cluster_https
+      connect_timeout: 5s
+      lb_policy: CLUSTER_PROVIDED
+      cluster_type:
+        name: envoy.clusters.dynamic_forward_proxy
+        typed_config:
+          "@type": type.googleapis.com/envoy.extensions.clusters.dynamic_forward_proxy.v3.ClusterConfig
+          dns_cache_config:
+            name: dynamic_forward_proxy_cache_config
+            dns_lookup_family: V4_ONLY
       transport_socket:
         name: envoy.transport_sockets.tls
         typed_config:
           "@type": type.googleapis.com/envoy.extensions.transport_sockets.tls.v3.UpstreamTlsContext
-          sni: origin-sports-test-data-service.preprod.hotstar-labs.com
-      load_assignment:
-        cluster_name: pp_cluster
-        endpoints:
-          - lb_endpoints:
-              - endpoint:
-                  address:
-                    socket_address:
-                      address: origin-sports-test-data-service.preprod.hotstar-labs.com
-                      port_value: 443
-
-    - name: pp_cluster_internal
-      connect_timeout: 5s
-      type: STRICT_DNS
-      load_assignment:
-        cluster_name: pp_cluster_internal
-        endpoints:
-          - lb_endpoints:
-              - endpoint:
-                  address:
-                    socket_address:
-                      address: sports-test-data-service.internal.preprod.hotstar.com
-                      port_value: 80
+          common_tls_context:
+            validation_context:
+              trusted_ca:
+                filename: /etc/ssl/certs/ca-certificates.crt
 
 admin:
   address:
