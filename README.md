@@ -21,10 +21,9 @@ Envoy (port 10000)
 
 | Service | Default host | Description |
 |---|---|---|
-| `preprod-service` | `preprod-service:8080` | Represents a preprod environment |
-| `feature-env-service` | `feature-env-service:8080` | Represents a feature/test environment |
 | `service1-preprod` | `service1-preprod:8080` | Calls `service2-preprod` downstream via Envoy |
 | `service2-preprod` | `service2-preprod:8080` | Downstream service called by service1 |
+
 
 ---
 
