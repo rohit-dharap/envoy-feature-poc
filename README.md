@@ -60,7 +60,7 @@ curl --request GET 'http://localhost:10000/health' \
   --header 'host: service2-preprod'
 ```
 
-Both requests should hit the preprod instances of each service.
+Both requests should hit the default instances of each service.
 
 ---
 
