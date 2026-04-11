@@ -10,7 +10,7 @@ class Handler(BaseHTTPRequestHandler):
         # Envoy is at envoy:10000 inside Docker network
         # Host header tells Envoy which service we want to reach
         req = urllib.request.Request('http://envoy:10000' + self.path)
-        req.add_header('Host', 'service2-preprod')
+        req.add_header('Host', 'origin-service2.preprod.hotstar-labs.com')
         if routing_header:
             req.add_header('x-hs-request-id', routing_header)  # propagate routing header
 

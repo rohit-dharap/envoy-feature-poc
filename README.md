@@ -19,10 +19,20 @@ Envoy (port 10000)
 
 ### Services in this PoC
 
-| Service | Default host | Description |
-|---|---|---|
-| `service1-preprod` | `service1-preprod:8080` | Calls `service2-preprod` downstream via Envoy |
-| `service2-preprod` | `service2-preprod:8080` | Downstream service called by service1 |
+| Service | Hostname | Type | Description |
+|---|---|---|---|
+| `service3-internal` | `service3.internal.preprod.hotstar.com` | Internal (HTTP) | Leaf service; represents an internal preprod endpoint |
+| `feature-env-service` | `service2.internal.qa.hotstar.com` | Internal (HTTP) | Feature/QA override target for service2 |
+| `service1` | `origin-service1.preprod.hotstar-labs.com` | Origin (HTTPS-style) | Entry point; calls service2 downstream via Envoy |
+| `service2-preprod` | `origin-service2.preprod.hotstar-labs.com` | Origin (HTTPS-style) | Calls service3 downstream via Envoy; returns combined response |
+
+**Call chain (default):**
+```
+service1  ──(origin)──►  service2  ──(internal)──►  service3
+```
+
+- `service1 → service2`: demonstrates routing to an **origin (HTTPS-style)** endpoint
+- `service2 → service3`: demonstrates routing to an **internal (HTTP)** endpoint
 
 
 ---
@@ -48,16 +58,20 @@ This brings up the Envoy proxy and all mock services. Envoy listens on port `100
 
 ### 2. Verify default routing (no overrides)
 
-Send requests to two services using the `host` header to specify which service to reach:
+Send requests using the `host` header matching the service's FQDN:
 
 ```bash
-# Route to service1-preprod
+# Route to service1 — calls service2 (PP), which calls service3 (internal PP)
 curl --request GET 'http://localhost:10000/health' \
-  --header 'host: service1-preprod'
+  --header 'host: origin-service1.preprod.hotstar-labs.com'
 
-# Route to service2-preprod
+# Route directly to service2 (PP) — calls service3 (internal PP)
 curl --request GET 'http://localhost:10000/health' \
-  --header 'host: service2-preprod'
+  --header 'host: origin-service2.preprod.hotstar-labs.com'
+
+# Route directly to service3 (internal PP)
+curl --request GET 'http://localhost:10000/health' \
+  --header 'host: service3.internal.preprod.hotstar.com'
 ```
 
 Both requests should hit the default instances of each service.
@@ -66,15 +80,19 @@ Both requests should hit the default instances of each service.
 
 ### 3. Generate the routing override payload
 
-The routing override is passed as a Base64-encoded JSON object inside `x-hs-request-id`. The JSON maps a service name to the target host you want traffic redirected to.
+The routing override is passed as a Base64-encoded JSON object inside `x-hs-request-id`. The JSON maps the **current hostname** to the **target hostname** for that hop.
 
-In this example, we override `service2-preprod` to route to an external host:
+| JSON key (current host) | JSON value (target host) | Effect |
+|---|---|---|
+| `"origin-service2.preprod.hotstar-labs.com"` | `"service2.internal.qa.hotstar.com"` | Redirect service2 hop to QA feature-env (HTTP via DFP) |
+| `"origin-service2.preprod.hotstar-labs.com"` | `"origin-service2.qa.hotstar-labs.com"` | Redirect service2 hop to a QA origin (HTTPS via DFP) |
+
+Example — override service2 to the QA feature-env instance:
 
 ```bash
-echo -n '{"service2-preprod":"origin-hs-subscription-service-1304146998.qa.hotstar-labs.com"}' | base64
+PAYLOAD=$(echo -n '{"origin-service2.preprod.hotstar-labs.com":"service2.internal.qa.hotstar.com"}' | base64)
+echo $PAYLOAD
 ```
-
-> **Tip:** The `origin-` prefix in the target host tells the Lua filter to route via the Dynamic Forward Proxy (DFP) over HTTPS, enabling routing to arbitrary external hosts without any static cluster config.
 
 Copy the Base64 output — you'll use it in the next step.
 
@@ -86,14 +104,15 @@ Replace `<encoded_data_from_above_step>` with the Base64 string from Step 3:
 
 ```bash
 curl --request GET 'http://localhost:10000/health' \
-  --header 'host: service1-preprod' \
+  --header 'host: origin-service1.preprod.hotstar-labs.com' \
   --header 'x-hs-request-id: 1234-1233-222::<encoded_data_from_above_step>'
 ```
 
 **What happens:**
-1. The request arrives at Envoy with `host: service1-preprod` → routed to `service1`.
-2. `service1` makes a downstream call to `service2-preprod` via Envoy, propagating the same `x-hs-request-id` header.
-3. Envoy's Lua filter decodes the payload, sees `service2-preprod` is overridden, and redirects that call to the external feature host instead of the default preprod cluster.
+1. The request arrives at Envoy with `host: origin-service1.preprod.hotstar-labs.com` → routed to `service1` (PP).
+2. `service1` makes a downstream call to `origin-service2.preprod.hotstar-labs.com` via Envoy, propagating the same `x-hs-request-id` header.
+3. Envoy's Lua filter decodes the payload, sees `origin-service2.preprod.hotstar-labs.com` is overridden with `service2.internal.qa.hotstar.com`, and redirects that hop to the QA feature-env instance instead.
+4. The QA feature-env service responds; `service1` returns the combined response.
 
 This demonstrates **multi-level dynamic routing**: a single header at the entry point drives routing decisions across the entire call chain.
 
