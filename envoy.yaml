@@ -39,17 +39,17 @@ static_resources:
                             cluster_header: "x-feature-target-cluster"
 
   clusters:
-    - name: preprod_cluster
+    - name: service3_internal_cluster
       connect_timeout: 5s
       type: STRICT_DNS
       load_assignment:
-        cluster_name: preprod_cluster
+        cluster_name: service3_internal_cluster
         endpoints:
           - lb_endpoints:
               - endpoint:
                   address:
                     socket_address:
-                      address: preprod-service
+                      address: service3.internal.preprod.hotstar.com
                       port_value: 8080
 
     - name: feature_env_cluster
@@ -62,7 +62,7 @@ static_resources:
               - endpoint:
                   address:
                     socket_address:
-                      address: feature-env-service
+                      address: service2.internal.qa.hotstar.com
                       port_value: 8080
 
     # DFP cluster for HTTP targets (internal services on port 80)
@@ -107,7 +107,7 @@ static_resources:
               - endpoint:
                   address:
                     socket_address:
-                      address: service1-preprod
+                      address: origin-service1.preprod.hotstar-labs.com
                       port_value: 8080
 
     - name: service2_preprod_cluster
@@ -120,7 +120,7 @@ static_resources:
               - endpoint:
                   address:
                     socket_address:
-                      address: service2-preprod
+                      address: origin-service2.preprod.hotstar-labs.com
                       port_value: 8080
 
 admin:

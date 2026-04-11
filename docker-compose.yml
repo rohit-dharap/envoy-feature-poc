@@ -16,16 +16,16 @@ services:
     networks:
       - poc-network
 
-  preprod-service:
+  service3-internal:
     image: python:3.11-slim
     volumes:
       - ./mock-services:/app
     working_dir: /app
-    command: python preprod.py
+    command: python service3_internal.py
     networks:
       poc-network:
         aliases:
-          - preprod-service   # envoy will reach this service by this name
+          - service3.internal.preprod.hotstar.com
 
   feature-env-service:
     image: python:3.11-slim
@@ -36,7 +36,7 @@ services:
     networks:
       poc-network:
         aliases:
-          - feature-env-service  # envoy will reach this service by this name
+          - service2.internal.qa.hotstar.com   # QA / feature-env version of service2
 
   service1:
     image: python:3.11-slim
@@ -49,7 +49,7 @@ services:
     networks:
       poc-network:
         aliases:
-          - service1-preprod
+          - origin-service1.preprod.hotstar-labs.com
 
   service2-preprod:
     image: python:3.11-slim
@@ -62,7 +62,7 @@ services:
     networks:
       poc-network:
         aliases:
-          - service2-preprod
+          - origin-service2.preprod.hotstar-labs.com
 
 networks:
   poc-network:

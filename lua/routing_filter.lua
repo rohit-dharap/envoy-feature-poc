@@ -1,40 +1,22 @@
 dofile("/etc/envoy/lua/base64.lua")
 dofile("/etc/envoy/lua/json_utils.lua")
 
-local ORIGIN_PREFIX = "origin-"
-
--- default cluster for each known local service
-local default_cluster_map = {
-  ["preprod-service"]   = "preprod_cluster",
-  ["feature-env-service"] = "feature_env_cluster",
-  ["service1-preprod"]  = "service1_cluster",
-  ["service2-preprod"]  = "service2_preprod_cluster",
+-- maps full hostname → static cluster (POC-specific, mirrors Docker service aliases)
+local cluster_map = {
+  ["origin-service1.preprod.hotstar-labs.com"]    = "service1_cluster",
+  ["origin-service2.preprod.hotstar-labs.com"]    = "service2_preprod_cluster",
+  ["service3.internal.preprod.hotstar.com"]       = "service3_internal_cluster",
 }
 
--- resolve which cluster and authority to use for a given target
-local function resolve_routing(target)
-  -- check if it's a known local Docker service first
-  if default_cluster_map[target] then
-    return default_cluster_map[target], nil
-  end
-  -- external HTTPS service (origin- prefix convention)
-  if target:sub(1, #ORIGIN_PREFIX) == ORIGIN_PREFIX then
-    return "dynamic_forward_proxy_cluster_https", target .. ":443"
-  end
-  -- internal HTTP service via DFP
-  return "dynamic_forward_proxy_cluster_http", target .. ":80"
-end
-
 function envoy_on_request(request_handle)
-  -- determine which service is being called at this hop
-  local authority = request_handle:headers():get(":authority")
-  local service_name = authority and authority:match("^([^:]+)") or ""
+  local authority = request_handle:headers():get(":authority") or ""
+  local host, port = authority:match("^(.+):(%d+)$")
+  if not host then host = authority end
 
-  -- set default cluster based on the service being called
-  local default_cluster = default_cluster_map[service_name] or "service1_cluster"
+  -- set default cluster for this hop (POC-specific, K8s uses route config)
+  local default_cluster = cluster_map[host] or "service1_cluster"
   request_handle:headers():add("x-feature-target-cluster", default_cluster)
 
-  -- check for routing payload
   local header_val = request_handle:headers():get("x-hs-request-id")
   if not header_val then return end
 
@@ -47,14 +29,20 @@ function envoy_on_request(request_handle)
     return
   end
 
-  -- look up routing override specifically for THIS service at THIS hop
-  local target = extract_json_value(decoded, service_name)
+  -- JSON key = full current hostname, value = full target hostname
+  local target = extract_json_value(decoded, host)
   if not target then return end
 
-  local cluster, authority_override = resolve_routing(target)
-  request_handle:logInfo("[FEATURE-ROUTING] " .. service_name .. " → " .. cluster)
-  request_handle:headers():replace("x-feature-target-cluster", cluster)
-  if authority_override then
-    request_handle:headers():replace(":authority", authority_override)
+  local new_authority = port and (target .. ":" .. port) or target
+  request_handle:logInfo("[FEATURE-ROUTING] " .. host .. " -> " .. new_authority)
+  request_handle:headers():replace(":authority", new_authority)
+
+  -- POC-specific: pick the right upstream cluster for the new host
+  if cluster_map[target] then
+    request_handle:headers():replace("x-feature-target-cluster", cluster_map[target])
+  elseif target:sub(1, 7) == "origin-" then
+    request_handle:headers():replace("x-feature-target-cluster", "dynamic_forward_proxy_cluster_https")
+  else
+    request_handle:headers():replace("x-feature-target-cluster", "dynamic_forward_proxy_cluster_http")
   end
 end
