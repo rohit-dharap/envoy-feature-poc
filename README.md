@@ -22,13 +22,12 @@ Envoy (port 10000)
 | Service | Hostname | Type | Description |
 |---|---|---|---|
 | `service3-internal` | `service3.internal.preprod.hotstar.com` | Internal (HTTP) | Leaf service; represents an internal preprod endpoint |
-| `feature-env-service` | `service2.internal.qa.hotstar.com` | Internal (HTTP) | Feature/QA override target for service2 |
 | `service1` | `origin-service1.preprod.hotstar-labs.com` | Origin (HTTPS-style) | Entry point; calls service2 downstream via Envoy |
 | `service2-preprod` | `origin-service2.preprod.hotstar-labs.com` | Origin (HTTPS-style) | Calls service3 downstream via Envoy; returns combined response |
 
 **Call chain (default):**
 ```
-service1  ──(origin)──►  service2  ──(internal)──►  service3
+service1 ──► service2 (origin) ──►  service3 (internal)
 ```
 
 - `service1 → service2`: demonstrates routing to an **origin (HTTPS-style)** endpoint
@@ -115,12 +114,6 @@ curl --request GET 'http://localhost:10000/health' \
 4. The QA feature-env service responds; `service1` returns the combined response.
 
 This demonstrates **multi-level dynamic routing**: a single header at the entry point drives routing decisions across the entire call chain.
-
----
-
-## Envoy Admin Dashboard
-
-An admin UI is available at [http://localhost:9901](http://localhost:9901). Useful for inspecting cluster health, active connections, and loaded configuration.
 
 ---
 
