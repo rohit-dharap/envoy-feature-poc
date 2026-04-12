@@ -27,16 +27,16 @@ services:
         aliases:
           - service3.internal.preprod.hotstar.com
 
-  feature-env-service:
-    image: python:3.11-slim
-    volumes:
-      - ./mock-services:/app
-    working_dir: /app
-    command: python featureenv.py
-    networks:
-      poc-network:
-        aliases:
-          - service2.internal.qa.hotstar.com   # QA / feature-env version of service2
+#  feature-env-service:
+#    image: python:3.11-slim
+#    volumes:
+#      - ./mock-services:/app
+#    working_dir: /app
+#    command: python featureenv.py
+#    networks:
+#      poc-network:
+#        aliases:
+#          - service2.internal.qa.hotstar.com   # QA / feature-env version of service2
 
   service1:
     image: python:3.11-slim
@@ -63,6 +63,17 @@ services:
       poc-network:
         aliases:
           - origin-service2.preprod.hotstar-labs.com
+
+  payload-builder:
+    image: python:3.11-slim
+    volumes:
+      - .:/app
+    working_dir: /app
+    command: python payload-builder.py
+    ports:
+      - "8888:8888"
+    networks:
+      - poc-network
 
 networks:
   poc-network:
