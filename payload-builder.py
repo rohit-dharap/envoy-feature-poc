@@ -9,7 +9,7 @@ Usage:
     python payload-builder.py
     # open http://localhost:8888
 """
-from http.server import HTTPServer, BaseHTTPRequestHandler
+from http.server import ThreadingHTTPServer, BaseHTTPRequestHandler
 import json
 import re
 import os
@@ -235,11 +235,12 @@ HTML = """<!DOCTYPE html>
 class Handler(BaseHTTPRequestHandler):
     def do_GET(self):
         aliases = get_aliases()
-        page = HTML.replace("__ALIASES__", json.dumps(aliases))
+        body = HTML.replace("__ALIASES__", json.dumps(aliases)).encode()
         self.send_response(200)
         self.send_header("Content-Type", "text/html; charset=utf-8")
+        self.send_header("Content-Length", str(len(body)))
         self.end_headers()
-        self.wfile.write(page.encode())
+        self.wfile.write(body)
 
     def log_message(self, fmt, *args):
         print(f"[PAYLOAD-BUILDER] {args[0]} {args[1]}")
@@ -247,4 +248,4 @@ class Handler(BaseHTTPRequestHandler):
 
 if __name__ == "__main__":
     print(f"[PAYLOAD-BUILDER] Listening on http://localhost:{PORT}")
-    HTTPServer(("0.0.0.0", PORT), Handler).serve_forever()
+    ThreadingHTTPServer(("0.0.0.0", PORT), Handler).serve_forever()
