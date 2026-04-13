@@ -1,0 +1,19 @@
+syntax = "proto3";
+package envoy.service.auth.v3;
+option go_package = "github.com/envoyproxy/go-control-plane/envoy/service/auth/v3;authv3";
+
+import "envoy/service/auth/v3/attribute_context.proto";
+import "google/rpc/status.proto";
+
+service Authorization {
+  rpc Check(CheckRequest) returns (CheckResponse) {}
+}
+
+message CheckRequest {
+  AttributeContext attributes = 1;
+}
+
+message CheckResponse {
+  google.rpc.Status status = 1;
+  // http_response oneof omitted — not needed for test
+}
