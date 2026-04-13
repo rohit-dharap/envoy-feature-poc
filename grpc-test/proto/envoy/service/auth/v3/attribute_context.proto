@@ -1,0 +1,31 @@
+syntax = "proto3";
+package envoy.service.auth.v3;
+option go_package = "github.com/envoyproxy/go-control-plane/envoy/service/auth/v3;authv3";
+
+// Minimal subset of AttributeContext needed for Check requests.
+// Field numbers must match the canonical envoy/service/auth/v3 proto exactly.
+message AttributeContext {
+
+  message HttpRequest {
+    string id       = 1;
+    string method   = 2;
+    map<string, string> headers = 3;
+    string path     = 4;
+    string host     = 5;
+    string scheme   = 6;
+    string query    = 7;
+    string fragment = 8;
+    int64  size     = 9;
+    string protocol = 10;
+    string body     = 11;
+    bytes  raw_body = 12;
+  }
+
+  message Request {
+    // field 1 is Timestamp (omitted — not needed for test)
+    HttpRequest http = 2;
+  }
+
+  // field 1 = source Peer, 2 = destination Peer (omitted — not needed for test)
+  Request request = 6;
+}

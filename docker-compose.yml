@@ -64,6 +64,19 @@ services:
         aliases:
           - origin-service2.preprod.hotstar-labs.com
 
+  gateway-auth-grpc-mock:
+    image: python:3.11-slim
+    volumes:
+      - ./mock-services:/app
+    working_dir: /app
+    command: sh -c "pip install grpcio --quiet --no-cache-dir && python -u gateway_auth_grpc_mock.py"
+    ports:
+      - "3000:3000"   # exposed so grpc-test/test-direct.sh can reach it from host
+    networks:
+      poc-network:
+        aliases:
+          - gateway-auth-service.internal.preprod.hotstar.com
+
   payload-builder:
     image: python:3.11-slim
     volumes:

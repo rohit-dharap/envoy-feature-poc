@@ -3,9 +3,10 @@ dofile("/etc/envoy/lua/json_utils.lua")
 
 -- maps full hostname → static cluster (POC-specific, mirrors Docker service aliases)
 local cluster_map = {
-  ["origin-service1.preprod.hotstar-labs.com"]    = "service1_cluster",
-  ["origin-service2.preprod.hotstar-labs.com"]    = "service2_preprod_cluster",
-  ["service3.internal.preprod.hotstar.com"]       = "service3_internal_cluster",
+  ["origin-service1.preprod.hotstar-labs.com"]          = "service1_cluster",
+  ["origin-service2.preprod.hotstar-labs.com"]          = "service2_preprod_cluster",
+  ["service3.internal.preprod.hotstar.com"]             = "service3_internal_cluster",
+  ["gateway-auth-service.internal.preprod.hotstar.com"] = "gateway_auth_grpc_cluster",
 }
 
 function envoy_on_request(request_handle)
